@@ -1,3 +1,6 @@
+const http = require('http');
+const PORT = process.env.PORT || 3000;
+http.createServer((req, res) => res.end('Bot is running')).listen(PORT);
 import express from 'express';
 import cors from 'cors';
 import webpush from 'web-push';
