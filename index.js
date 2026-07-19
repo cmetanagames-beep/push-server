@@ -60,17 +60,21 @@ function localDateParts(tzOffsetMin) {
   return { tk, hm: hh + ':' + mi };
 }
 
-async function sendPush(userId, title, body) {
+async function sendPush(userId, title, body, taskId) {
   const sub = subs[userId];
   if (!sub) return;
   try {
-    await webpush.sendNotification(sub, JSON.stringify({ title, body }));
+    await webpush.sendNotification(sub, JSON.stringify({ title, body, taskId }));
     console.log('📤 Отправлено', userId, title);
   } catch (e) {
     console.log('❌ Ошибка отправки', userId, e.message);
     if (e.statusCode === 404 || e.statusCode === 410) delete subs[userId];
   }
 }
+
+// ===== Настройки повторных напоминаний =====
+const REMINDER_INTERVAL_MIN = 20;  // через сколько минут повторить, если не выполнено
+const MAX_REMINDERS = 3;           // максимум повторов (включая первый пуш)
 
 setInterval(() => {
   Object.keys(userData).forEach(userId => {
