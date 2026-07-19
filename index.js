@@ -31,6 +31,7 @@ app.post('/sync', (req, res) => {
   userData[userId].tasks = Array.isArray(tasks) ? tasks : [];
   userData[userId].notifyHour = notifyHour || '09:00';
   userData[userId].tzOffset = typeof tzOffset === 'number' ? tzOffset : 180;
+  console.log(`📥 Синхронизация от ${userId}: ${userData[userId].tasks.length} задач, notifyHour=${userData[userId].notifyHour}, tzOffset=${userData[userId].tzOffset}`);
   res.json({ ok: true, count: userData[userId].tasks.length });
 });
 
