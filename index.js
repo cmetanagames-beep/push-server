@@ -82,15 +82,57 @@ setInterval(() => {
     if (!u || !subs[userId]) return;
     const { tk, hm } = localDateParts(u.tzOffset || 180);
 
+    // если объекта для повторных напоминаний ещё нет — создаём
+    if (!u.reminders) u.reminders = {}; // { taskId: { count, lastSent } }
+
     (u.tasks || []).forEach(t => {
-      if (t.done || !t.date || !t.time) return;
-      if (t.date === tk && t.time === hm) {
-        const key = 'task_' + t.id + '_' + tk;
-        if (u.sentKeys[key]) return;
-        u.sentKeys[key] = 1;
-        sendPush(userId, '⏰ ' + (t.title || 'Напоминание'), 'Пора выполнить дело');
+      if (!t.date || !t.time) return;
+
+      // Если задача выполнена — останавливаем напоминания и чистим память
+      if (t.done) {
+        if (u.reminders[t.id]) delete u.reminders[t.id];
+        return;
+      }
+
+      const rem = u.reminders[t.id];
+
+      // ===== Первое напоминание (точное время задачи) =====
+      if (!rem && t.date === tk && t.time === hm) {
+        u.reminders[t.id] = { count: 1, lastSent: Date.now() };
+        sendPush(userId, '⏰ ' + (t.title || 'Напоминание'), 'Пора выполнить дело', t.id);
+        return;
+      }
+
+      // ===== Повторные напоминания =====
+      if (rem && rem.count < MAX_REMINDERS) {
+        const minutesPassed = (Date.now() - rem.lastSent) / 60000;
+        if (minutesPassed >= REMINDER_INTERVAL_MIN) {
+          rem.count++;
+          rem.lastSent = Date.now();
+          sendPush(
+            userId,
+            '⏰ Повторное напоминание (' + rem.count + '/' + MAX_REMINDERS + ')',
+            t.title || 'Не забудь про дело',
+            t.id
+          );
+        }
       }
     });
+
+    // ===== Дневная сводка (без изменений) =====
+    const nh = u.notifyHour || '09:00';
+    if (hm === nh) {
+      const dailyKey = 'daily_' + tk;
+      if (!u.sentKeys[dailyKey]) {
+        u.sentKeys[dailyKey] = 1;
+        const todo = (u.tasks || []).filter(t => !t.done && t.date === tk).length;
+        if (todo > 0) {
+          sendPush(userId, '📋 План на сегодня', `У тебя ${todo} ${todo === 1 ? 'дело' : 'дел(а)'} на сегодня`);
+        }
+      }
+    }
+  });
+}, 60000);
 
     const nh = u.notifyHour || '09:00';
     if (hm === nh) {
